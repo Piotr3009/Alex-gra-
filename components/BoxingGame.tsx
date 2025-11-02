@@ -11,6 +11,7 @@ const JUMP_FORCE = -12;
 const MOVE_SPEED = 5;
 const PUNCH_DAMAGE = 10;
 const PUNCH_COOLDOWN = 30; // frames
+const KNOCKBACK_FORCE = 15; // pixels to push back when hit
 
 export default function BoxingGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,6 +19,7 @@ export default function BoxingGame() {
   const gameStateRef = useRef<GameState>(gameState);
   const controlsRef = useRef<PlayerControls>(initControls());
   const animationFrameRef = useRef<number>();
+  const hitSoundRef = useRef<HTMLAudioElement | null>(null);
 
   function initGameState(): GameState {
     return {
@@ -68,6 +70,30 @@ export default function BoxingGame() {
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  // Initialize hit sound using Web Audio API
+  useEffect(() => {
+    // Create a simple punch sound effect
+    const createPunchSound = () => {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.1);
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.1);
+    };
+
+    hitSoundRef.current = { play: createPunchSound } as any;
+  }, []);
 
   // Load game state from localStorage
   useEffect(() => {
@@ -222,10 +248,34 @@ export default function BoxingGame() {
     // Check punch collisions
     if (newState.boxers.blue.isPunching && checkCollision(newState.boxers.blue, newState.boxers.yellow)) {
       newState.boxers.yellow.health = Math.max(0, newState.boxers.yellow.health - PUNCH_DAMAGE);
+
+      // Apply knockback to yellow boxer
+      const knockbackDirection = newState.boxers.blue.facing === 'right' ? 1 : -1;
+      newState.boxers.yellow.position.x += KNOCKBACK_FORCE * knockbackDirection;
+
+      // Keep within canvas bounds
+      newState.boxers.yellow.position.x = Math.max(0, Math.min(CANVAS_WIDTH - newState.boxers.yellow.width, newState.boxers.yellow.position.x));
+
+      // Play hit sound
+      if (hitSoundRef.current) {
+        hitSoundRef.current.play();
+      }
     }
 
     if (newState.boxers.yellow.isPunching && checkCollision(newState.boxers.yellow, newState.boxers.blue)) {
       newState.boxers.blue.health = Math.max(0, newState.boxers.blue.health - PUNCH_DAMAGE);
+
+      // Apply knockback to blue boxer
+      const knockbackDirection = newState.boxers.yellow.facing === 'right' ? 1 : -1;
+      newState.boxers.blue.position.x += KNOCKBACK_FORCE * knockbackDirection;
+
+      // Keep within canvas bounds
+      newState.boxers.blue.position.x = Math.max(0, Math.min(CANVAS_WIDTH - newState.boxers.blue.width, newState.boxers.blue.position.x));
+
+      // Play hit sound
+      if (hitSoundRef.current) {
+        hitSoundRef.current.play();
+      }
     }
 
     // Check game over
