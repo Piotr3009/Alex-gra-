@@ -272,61 +272,120 @@ export default function BoxingGame() {
     ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y);
 
     // Draw boxers
-    function drawBoxer(boxer: Boxer) {
-      // Body
-      ctx.fillStyle = boxer.color;
-      ctx.fillRect(boxer.position.x, boxer.position.y, boxer.width, boxer.height);
+    function drawBoxer(boxer: Boxer, context: CanvasRenderingContext2D) {
+      const centerX = boxer.position.x + boxer.width / 2;
+      const centerY = boxer.position.y + boxer.height / 2;
 
       // Head
-      ctx.fillRect(
-        boxer.position.x + boxer.width / 4,
-        boxer.position.y - 20,
-        boxer.width / 2,
-        20
-      );
+      context.fillStyle = '#FFD1A3'; // Skin tone
+      context.beginPath();
+      context.arc(centerX, boxer.position.y - 10, 15, 0, Math.PI * 2);
+      context.fill();
 
-      // Punch animation
-      if (boxer.isPunching) {
-        ctx.fillStyle = '#FFFFFF';
-        const punchX = boxer.facing === 'right'
-          ? boxer.position.x + boxer.width
-          : boxer.position.x - 25;
-        ctx.fillRect(punchX, boxer.position.y + 20, 25, 10);
+      // Head outline
+      context.strokeStyle = '#000000';
+      context.lineWidth = 2;
+      context.stroke();
+
+      // Torso
+      context.fillStyle = boxer.color;
+      context.beginPath();
+      context.roundRect(
+        boxer.position.x + 5,
+        boxer.position.y + 5,
+        boxer.width - 10,
+        45,
+        [5]
+      );
+      context.fill();
+      context.strokeStyle = '#000000';
+      context.lineWidth = 2;
+      context.stroke();
+
+      // Legs
+      context.fillStyle = '#1F2937'; // Dark pants
+      const legWidth = 12;
+      const legHeight = 30;
+      const legY = boxer.position.y + 50;
+
+      // Left leg
+      context.fillRect(centerX - legWidth - 2, legY, legWidth, legHeight);
+      // Right leg
+      context.fillRect(centerX + 2, legY, legWidth, legHeight);
+
+      // Arms and gloves
+      const shoulderY = boxer.position.y + 15;
+      const armLength = boxer.isPunching ? 35 : 25;
+
+      // Arm positions based on facing direction
+      if (boxer.facing === 'right') {
+        // Back arm (left)
+        drawArm(centerX - 8, shoulderY, centerX + 10, shoulderY + 5, boxer.color, false);
+        // Front arm (right) - extends when punching
+        drawArm(centerX + 8, shoulderY, centerX + 8 + armLength, shoulderY, boxer.color, boxer.isPunching);
+      } else {
+        // Back arm (right)
+        drawArm(centerX + 8, shoulderY, centerX - 10, shoulderY + 5, boxer.color, false);
+        // Front arm (left) - extends when punching
+        drawArm(centerX - 8, shoulderY, centerX - 8 - armLength, shoulderY, boxer.color, boxer.isPunching);
+      }
+
+      function drawArm(x1: number, y1: number, x2: number, y2: number, color: string, isPunching: boolean) {
+        // Arm
+        context.strokeStyle = '#FFD1A3'; // Skin tone
+        context.lineWidth = 6;
+        context.lineCap = 'round';
+        context.beginPath();
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+        context.stroke();
+
+        // Boxing glove
+        const gloveSize = isPunching ? 10 : 8;
+        context.fillStyle = isPunching ? '#FF0000' : color; // Red when punching
+        context.beginPath();
+        context.arc(x2, y2, gloveSize, 0, Math.PI * 2);
+        context.fill();
+
+        // Glove outline
+        context.strokeStyle = '#000000';
+        context.lineWidth = 2;
+        context.stroke();
       }
     }
 
-    drawBoxer(state.boxers.blue);
-    drawBoxer(state.boxers.yellow);
+    drawBoxer(state.boxers.blue, ctx);
+    drawBoxer(state.boxers.yellow, ctx);
 
     // Draw health bars
-    function drawHealthBar(boxer: Boxer, x: number) {
+    function drawHealthBar(boxer: Boxer, x: number, context: CanvasRenderingContext2D) {
       const barWidth = 150;
       const barHeight = 20;
       const y = 20;
 
       // Background
-      ctx.fillStyle = '#374151';
-      ctx.fillRect(x, y, barWidth, barHeight);
+      context.fillStyle = '#374151';
+      context.fillRect(x, y, barWidth, barHeight);
 
       // Health
       const healthWidth = (boxer.health / boxer.maxHealth) * barWidth;
-      ctx.fillStyle = boxer.color;
-      ctx.fillRect(x, y, healthWidth, barHeight);
+      context.fillStyle = boxer.color;
+      context.fillRect(x, y, healthWidth, barHeight);
 
       // Border
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, barWidth, barHeight);
+      context.strokeStyle = '#FFFFFF';
+      context.lineWidth = 2;
+      context.strokeRect(x, y, barWidth, barHeight);
 
       // Text
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '14px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${boxer.id.toUpperCase()}: ${boxer.health}`, x + barWidth / 2, y - 5);
+      context.fillStyle = '#FFFFFF';
+      context.font = '14px monospace';
+      context.textAlign = 'center';
+      context.fillText(`${boxer.id.toUpperCase()}: ${boxer.health}`, x + barWidth / 2, y - 5);
     }
 
-    drawHealthBar(state.boxers.blue, 50);
-    drawHealthBar(state.boxers.yellow, CANVAS_WIDTH - 200);
+    drawHealthBar(state.boxers.blue, 50, ctx);
+    drawHealthBar(state.boxers.yellow, CANVAS_WIDTH - 200, ctx);
 
     // Draw score
     ctx.fillStyle = '#FFFFFF';
